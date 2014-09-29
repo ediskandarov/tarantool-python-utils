@@ -1,6 +1,11 @@
-local django_cache_space = 1
+-- Django cache
+local django_cache_space = 0
 -- 1 month
 local django_cache_default_timeout = 60 * 60 * 24 * 30
+
+-- Sentry buffer
+local sentry_buffer_space = 1
+local sentry_buffer_extra_space = 2
 
 
 box.django_cache = {
@@ -77,5 +82,56 @@ box.django_cache = {
 
     clear = function()
         box.space[django_cache_space]:truncate()
+    end,
+}
+
+box.sentry_buffer = {
+    incr = function(key, amount, timeout)
+        amount = tonumber(amount)
+        timeout = math.floor(box.time() + 0.5) + tonumber64(timeout)
+        local tuple = box.update(sentry_buffer_space, key, '+p=p', 1, amount, 2, timeout)
+        if tuple == nil then
+            tuple = box.insert(sentry_buffer_space, key, amount, timeout)
+        end
+        return tuple[1]
+    end,
+
+    hset = function(key, column, value, timeout)
+        timeout = math.floor(box.time() + 0.5) + tonumber64(timeout)
+        box.replace(sentry_buffer_extra_space, key, column, value, timeout)
+    end,
+
+    setnx = function(lock_key, timeout)
+        timeout = math.floor(box.time() + 0.5) + tonumber64(timeout)
+        local tuple = box.select(sentry_buffer_space, 0, lock_key)
+        if tuple == nil then
+            box.insert(sentry_buffer_space, lock_key, '1', timeout)
+            return true
+        end
+    end,
+
+    getset = function(key, value, timeout)
+        timeout = math.floor(box.time() + 0.5) + tonumber64(timeout)
+        local tuple = box.select(sentry_buffer_space, 0, key)
+        box.update(sentry_buffer_space, key, '=p=p', 1, 0, 2, timeout)
+        if tuple ~= nil then
+            return tuple[1]
+        end
+    end,
+
+    hgetalldelete = function(hash_key)
+        local response = {}
+        local delete_keys = {}
+        for k, v in box.space[sentry_buffer_extra_space].index[1]:iterator(box.index.EQ, hash_key) do
+            table.insert(response, {k[1], k[2]})
+            table.insert(delete_keys, {k[0], k[1]})
+        end
+
+        for i = 1, #delete_keys do
+            box.delete(sentry_buffer_extra_space, unpack(delete_keys[i]))
+        end
+        if #response ~= 0 then
+            return response
+        end
     end,
 }

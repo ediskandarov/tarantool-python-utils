@@ -5,8 +5,6 @@ from unittest import TestCase
 from django.core.cache import cache
 from django.conf import settings
 
-import tarantool
-
 
 class TarantoolCacheTestCase(TestCase):
     def __init__(self, *args, **kwargs):
@@ -15,16 +13,11 @@ class TarantoolCacheTestCase(TestCase):
         self.cache_space = cache_space
 
     def setUp(self):
-        host, _, port = settings.CACHES['default']['LOCATION'].rpartition(':')
-        self.client = tarantool.connect(host, int(port))
         self.clean_tnt()
-
-    def tearDown(self):
-        self.client.close()
 
     def clean_tnt(self):
         lua_code = 'box.space[%s]:truncate()' % (self.cache_space,)
-        self.client.call('box.dostring', lua_code)
+        cache._tnt.call('box.dostring', lua_code)
 
     def test_make_key(self):
         key1 = cache.make_key('ololo')
@@ -35,7 +28,7 @@ class TarantoolCacheTestCase(TestCase):
 
     def test_add(self):
         reference_value = 'test add value'
-        self.client.insert(self.cache_space, (':1:test_add', reference_value,
+        cache._tnt.insert(self.cache_space, (':1:test_add', reference_value,
                            100500L))
         is_ok = cache.add('test_add', 'lololo value')
         self.assertFalse(is_ok)
@@ -47,7 +40,7 @@ class TarantoolCacheTestCase(TestCase):
 
     def test_get(self):
         reference_value = 'test get value'
-        self.client.insert(self.cache_space, (':1:test_get', reference_value,
+        cache._tnt.insert(self.cache_space, (':1:test_get', reference_value,
                            100500L))
         value = cache.get('test_get')
         self.assertEqual(reference_value, value)
@@ -57,7 +50,7 @@ class TarantoolCacheTestCase(TestCase):
 
     def test_set(self):
         reference_value = 'test set value'
-        self.client.insert(self.cache_space, (':1:test_set', 'ololo value',
+        cache._tnt.insert(self.cache_space, (':1:test_set', 'ololo value',
                            100500L))
         is_ok = cache.set('test_set', reference_value)
         self.assertEqual(reference_value, cache.get('test_set'))
@@ -118,5 +111,5 @@ class TarantoolCacheTestCase(TestCase):
         cache.clear()
 
         lua_code = 'return box.space[%s]:len()' % (self.cache_space,)
-        response = self.client.call('box.dostring', lua_code)
+        response = cache._tnt.call('box.dostring', lua_code)
         self.assertEqual(0, int(response[0][0]))
