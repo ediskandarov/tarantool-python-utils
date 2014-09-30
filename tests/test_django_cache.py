@@ -29,11 +29,11 @@ class TarantoolCacheTestCase(TestCase):
 
     def test_make_value(self):
         self.assertEqual(1, cache.make_value(1))
-        self.assertEqual(pickle.dumps('ololo'), cache.make_value('ololo'))
+        self.assertEqual(' ' * 8 + pickle.dumps('ololo'), cache.make_value('ololo'))
 
     def test_add(self):
         reference_value = 'test add value'
-        pickled_value = pickle.dumps(reference_value)
+        pickled_value = ' ' * 8 + pickle.dumps(reference_value)
         cache._tnt.insert(self.cache_space, (':1:test_add', pickled_value,
                            100500L))
         is_ok = cache.add('test_add', 'lololo value')
@@ -46,7 +46,7 @@ class TarantoolCacheTestCase(TestCase):
 
     def test_get(self):
         reference_value = 'test get value'
-        pickled_value = pickle.dumps(reference_value)
+        pickled_value = ' ' * 8 + pickle.dumps(reference_value)
         cache._tnt.insert(self.cache_space, (':1:test_get', pickled_value,
                            100500L))
         value = cache.get('test_get')

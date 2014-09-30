@@ -22,10 +22,9 @@ class TarantoolCache(BaseCache):
         self._servers = servers
 
     def _extract_value(self, value):
-        if len(value) > 8:
-            return pickle.loads(str(value))
-        else:
+        if len(value) <= 8:
             return int(value)
+        return pickle.loads(value[8:])
 
     def extract_value(self, response):
         value = response[0][0]
@@ -65,7 +64,7 @@ class TarantoolCache(BaseCache):
         if isinstance(value, (int, long)):
             return value
         else:
-            return pickle.dumps(value)
+            return ' ' * 8 + pickle.dumps(value)
 
     def add(self, key, value, timeout=DEFAULT_TIMEOUT, version=None):
         call_args = (self.make_key(key, version), self.make_value(value),
