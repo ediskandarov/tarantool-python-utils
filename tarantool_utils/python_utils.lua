@@ -1,12 +1,46 @@
--- Django cache
+-- Settings
 local django_cache_space = 0
--- 1 month
-local django_cache_default_timeout = 60 * 60 * 24 * 30
-
--- Sentry buffer
 local sentry_buffer_space = 1
 local sentry_buffer_extra_space = 2
 
+
+-- Init expirationd
+dofile('expirationd.lua')
+
+local function is_expired(args, tuple)
+    if tuple == nil or #tuple <= args.field_no then
+        return nil
+    end
+
+    local field = tuple[args.field_no]
+    local current_time = tonumber64(box.time())
+    local tuple_expire_time = box.unpack("l", field)
+
+    return current_time >= tuple_expire_time
+end
+
+local function delete_expired_tuple(space_no, args, tuple)
+    local key_fields = {}
+    for i = 0, #box.space[space_no].index[0].key_field do
+        table.insert(key_fields, box.space[space_no].index[0].key_field[i].fieldno)
+    end
+
+    local key = {}
+    for i = 1, #key_fields do
+        table.insert(key, tuple[key_fields[i]])
+    end
+
+    box.delete(space_no, unpack(key))
+end
+
+expirationd.run_task("django-cache", django_cache_space, is_expired, delete_expired_tuple, {field_no = 2})
+expirationd.run_task("sentry-buffer", sentry_buffer_space, is_expired, delete_expired_tuple, {field_no = 2})
+expirationd.run_task("sentry-buffer-extra", sentry_buffer_extra_space, is_expired, delete_expired_tuple, {field_no = 3})
+
+
+-- Django cache
+-- 1 month
+local django_cache_default_timeout = 60 * 60 * 24 * 30
 
 box.django_cache = {
     add = function(key, value, timeout)
@@ -85,6 +119,8 @@ box.django_cache = {
     end,
 }
 
+
+-- Sentry buffer
 box.sentry_buffer = {
     incr = function(key, amount, timeout)
         amount = tonumber(amount)

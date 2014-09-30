@@ -6,10 +6,19 @@ tarantool-python-utils
 * tarantool_utils.celery.TarantoolBackend
 * tarantool_utils.sentry.TarantoolBuffer
 
+Installation
+------------
+
+Take expirationd.
+
+* https://github.com/mailru/tntlua/blob/master/expirationd.lua for tarantool 1.5
+* https://github.com/tarantool/expirationd - tarantool 1.6
+
 Example tarantool.conf
 ----------------------
 
 ::
+
     # Django cache
     space[0].enabled = 1
     space[0].index[0].type = "HASH"
