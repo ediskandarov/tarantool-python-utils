@@ -2,9 +2,17 @@
 tarantool-python-utils
 ======================
 
+Caution! This module tested only with tarantool 1.5.
+
+By this time celery backend is not ready.
+
+Only one tarantool instance is supported by this time.
+
 * tarantool_utils.django.TarantoolCache
+* tarantool_utils.django.TarantoolSession
 * tarantool_utils.celery.TarantoolBackend
 * tarantool_utils.sentry.TarantoolBuffer
+
 
 Installation
 ------------
@@ -13,6 +21,7 @@ Take expirationd.
 
 * https://github.com/mailru/tntlua/blob/master/expirationd.lua for tarantool 1.5
 * https://github.com/tarantool/expirationd - tarantool 1.6
+
 
 Example tarantool.conf
 ----------------------
