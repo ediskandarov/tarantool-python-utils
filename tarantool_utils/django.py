@@ -3,9 +3,14 @@ from __future__ import absolute_import
 import json
 
 from django.utils.encoding import force_str
-from django.core.cache.backends.base import BaseCache, DEFAULT_TIMEOUT
+from django.core.cache.backends.base import BaseCache
 from django.utils.encoding import force_str
 from django.utils.functional import cached_property
+
+try:
+    from django.core.cache.backends.base import DEFAULT_TIMEOUT
+except ImportError:
+    DEFAULT_TIMEOUT = 0
 
 import tarantool
 
