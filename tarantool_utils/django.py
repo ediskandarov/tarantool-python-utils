@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 import json
+import pickle
 
 from django.utils.encoding import force_str
 from django.core.cache.backends.base import BaseCache
@@ -20,8 +21,15 @@ class TarantoolCache(BaseCache):
         super(TarantoolCache, self).__init__(params)
         self._servers = servers
 
+    def _extract_value(self, value):
+        if len(value) > 8:
+            return pickle.loads(str(value))
+        else:
+            return int(value)
+
     def extract_value(self, response):
-        return response[0][0]
+        value = response[0][0]
+        return self._extract_value(value)
 
     def get_backend_timeout(self, timeout=DEFAULT_TIMEOUT):
         """
@@ -53,8 +61,14 @@ class TarantoolCache(BaseCache):
         # Python 2 memcache requires the key to be a byte string.
         return force_str(super(TarantoolCache, self).make_key(key, version))
 
+    def make_value(self, value):
+        if isinstance(value, (int, long)):
+            return value
+        else:
+            return pickle.dumps(value)
+
     def add(self, key, value, timeout=DEFAULT_TIMEOUT, version=None):
-        call_args = (self.make_key(key, version), value,
+        call_args = (self.make_key(key, version), self.make_value(value),
                      self.get_backend_timeout(timeout))
 
         try:
@@ -71,7 +85,7 @@ class TarantoolCache(BaseCache):
         return self.extract_value(response)
 
     def set(self, key, value, timeout=DEFAULT_TIMEOUT, version=None):
-        call_args = (self.make_key(key, version), value,
+        call_args = (self.make_key(key, version), self.make_value(value),
                      self.get_backend_timeout(timeout))
 
         self._tnt.call('box.django_cache.set', call_args)
@@ -93,7 +107,7 @@ class TarantoolCache(BaseCache):
 
         new_response = {}
         for key, value in response:
-            new_response[key_map[key]] = value
+            new_response[key_map[key]] = self._extract_value(value)
         return new_response
 
     def has_key(self, key, version=None):
@@ -126,7 +140,7 @@ class TarantoolCache(BaseCache):
         safe_data = {}
         for key, value in data.iteritems():
             key = self.make_key(key, version)
-            safe_data[key] = value
+            safe_data[key] = self.make_value(value)
         call_args = (json.dumps(safe_data), self.get_backend_timeout(timeout))
         self._tnt.call('box.django_cache.set_many', call_args)
 
