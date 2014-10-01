@@ -1,4 +1,5 @@
 -- Settings
+local celery_backend_space = 3
 local django_cache_space = 0
 local sentry_buffer_space = 1
 local sentry_buffer_extra_space = 2
@@ -34,8 +35,45 @@ local function delete_expired_tuple(space_no, args, tuple)
 end
 
 expirationd.run_task("django-cache", django_cache_space, is_expired, delete_expired_tuple, {field_no = 2})
+expirationd.run_task("celery-backend", celery_backend_space, is_expired, delete_expired_tuple, {field_no = 2})
 expirationd.run_task("sentry-buffer", sentry_buffer_space, is_expired, delete_expired_tuple, {field_no = 2})
 expirationd.run_task("sentry-buffer-extra", sentry_buffer_extra_space, is_expired, delete_expired_tuple, {field_no = 3})
+
+-- Celery backend
+box.celery_backend = {
+    get = function(key)
+        local tuple = box.select(celery_backend_space, 0, key)
+        if tuple ~= nil then
+            return tuple[1]
+        end
+    end,
+
+    set = function(key, value, timeout)
+        timeout = math.floor(box.time() + 0.5) + tonumber64(timeout)
+        box.replace(celery_backend_space, key, value, timeout)
+    end,
+
+    delete = function(key)
+        box.delete(celery_backend_space, key)
+    end,
+
+    mget = function(keys_json)
+        local keys = box.cjson.decode(keys_json)
+        local response = {}
+        for i, key in ipairs(keys) do
+           local tuple = box.select(celery_backend_space, 0, key)
+           if tuple ~= nil then
+               table.insert(response, {tuple[0], tuple[1]})
+           end
+        end
+        return response
+    end,
+
+    expire = function(key, timeout)
+        timeout = math.floor(box.time() + 0.5) + tonumber64(timeout)
+        box.update(celery_backend_space, key, '=p', 2, timeout)
+    end,
+}
 
 
 -- Django cache

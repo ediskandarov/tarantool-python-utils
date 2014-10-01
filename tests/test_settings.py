@@ -17,3 +17,5 @@ SENTRY_BUFFER_OPTIONS = {
         }
     },
 }
+
+CELERY_RESULT_BACKEND = 'tarantool://win91.dev.mail.ru:33033'

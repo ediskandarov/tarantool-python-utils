@@ -9,8 +9,9 @@ By this time celery backend is not ready.
 Only one tarantool instance is supported by this time.
 
 * tarantool_utils.django.TarantoolCache
-* tarantool_utils.django.TarantoolSession
+* tarantool_utils.django.TarantoolSession (not ready)
 * tarantool_utils.celery.TarantoolBackend
+* tarantool_utils.celery.TarantoolTransport (not ready)
 * tarantool_utils.sentry.TarantoolBuffer
 
 
@@ -65,3 +66,14 @@ Example tarantool.conf
     space[2].index[2].unique = 0
     space[2].index[2].key_field[0].fieldno = 3
     space[2].index[2].key_field[0].type = "NUM64" # timeout
+    
+    # Celery backend
+    space[3].enabled = 1
+    space[3].index[0].type = "HASH"
+    space[3].index[0].unique = 1
+    space[3].index[0].key_field[0].fieldno = 0
+    space[3].index[0].key_field[0].type = "STR" # key
+    space[3].index[1].type = "TREE"
+    space[3].index[1].unique = 0
+    space[3].index[1].key_field[0].fieldno = 2
+    space[3].index[1].key_field[0].type = "NUM64" # timeout
