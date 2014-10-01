@@ -18,7 +18,7 @@ Only one tarantool instance is supported by this time.
 Installation
 ------------
 
-Take expirationd.
+Take expirationd and put it in tarantool script directory.
 
 * https://github.com/mailru/tntlua/blob/master/expirationd.lua for tarantool 1.5
 * https://github.com/tarantool/expirationd - tarantool 1.6
